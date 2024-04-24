@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @CommandLine.Command(name = "cut", version = "1.0.0", mixinStandardHelpOptions = true)
-public class Cut implements Callable<List<String>> {
+public class Cut implements Callable<String> {
     private static final char DEFAULT_INPUT_DELIMITER = '\t';
     @Option(names = {"-d"}, description = "Delimiter")
     private char delimiter = DEFAULT_INPUT_DELIMITER;
@@ -66,7 +66,7 @@ public class Cut implements Callable<List<String>> {
     }
 
     @Override
-    public List<String> call() throws Exception {
+    public String call() throws Exception {
         var isByteOrCharQuery = Objects.nonNull(ranges);
         if (isByteOrCharQuery) {
             if (delimiter != DEFAULT_INPUT_DELIMITER) {
@@ -105,7 +105,7 @@ public class Cut implements Callable<List<String>> {
                                 .map(Object::toString)
                                 .collect(Collectors.joining(""))
                         )
-                        .toList();
+                        .collect(Collectors.joining(System.lineSeparator()));
             }
         } else {
             var escapedDelimiter = escapeDelimiterIfReserved(this.delimiter);
@@ -147,7 +147,7 @@ public class Cut implements Callable<List<String>> {
                             }
                             return true;
                         })
-                        .toList();
+                        .collect(Collectors.joining(System.lineSeparator()));
             }
         }
     }

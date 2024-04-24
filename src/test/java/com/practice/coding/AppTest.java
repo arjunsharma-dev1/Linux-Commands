@@ -1,6 +1,7 @@
 package com.practice.coding;
 
 import com.practice.coding.cut.Cut;
+import com.practice.coding.sort.Sort;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -45,6 +46,13 @@ public class AppTest
         var commandLine = new CommandLine(new Cut());
         var exitCode = commandLine.execute(args);
         var result = commandLine.getExecutionResult();
-        return ((List<String>) result).stream().collect(Collectors.joining("\n"));
+        return (String) result;
+    }
+
+    public static String callSort(String... args) {
+        var commandLine = new CommandLine(new Sort());
+        var exitCode = commandLine.execute(args);
+        var result = commandLine.getExecutionResult();
+        return (String) result;
     }
 }

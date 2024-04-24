@@ -12,7 +12,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>3.8.1</version>
+      <version>4.13.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -26,12 +26,6 @@
       <version>1.2.0</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>com.google.auto.service</groupId>
-      <artifactId>auto-service</artifactId>
-      <version>1.1.1</version>
-      <optional>true</optional>
-    </dependency>
   </dependencies>
 
   <build>
@@ -43,10 +37,10 @@
           <source>17</source>
           <target>17</target>
           <generatedSourcesDirectory>${project.basedir}/target/generated-sources</generatedSourcesDirectory>
-          <proc>full</proc>
+          <!--<proc>full</proc>
           <annotationProcessors>
             <annotationProcessor>com.practice.coding.sort.SortOptionsProcessor</annotationProcessor>
-          </annotationProcessors>
+          </annotationProcessors>-->
         </configuration>
       </plugin>
     </plugins>
