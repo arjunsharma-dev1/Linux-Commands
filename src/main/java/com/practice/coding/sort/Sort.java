@@ -1,6 +1,7 @@
 package com.practice.coding.sort;
 
 import com.practice.coding.utils.Pair;
+import com.practice.coding.utils.StringUtils;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -35,24 +36,46 @@ public class Sort implements Callable<String> {
     @Option(names = {"-d", "--dictionary-order"}, description = {"consider only blanks and alphanumeric characters"})
     private boolean dictionaryOrder;
 
+    @Option(names = {"-g", "--general-numeric-sort"}, description = {"compare according to general numerical value"})
+    private boolean generalNumericSort;
+
     private static final String NON_BLANK_NON_ALPHANUMERIC_REGEX = "[^a-zA-Z0-9\\s]+";
 
     private Comparator<String> simpleOrder = String::compareTo;
     private Comparator<String> reverseOrder = simpleOrder.reversed();
 
 
-    private Comparator<Pair<String, String>> pairSimpleOrder = (first, second) -> {
-        return simpleOrder.compare(first.getValue(), second.getValue());
+    private Comparator<Pair<String, Object>> pairSimpleOrder = (first, second) -> {
+        return simpleOrder.compare((String) first.getValue(), (String) second.getValue());
     };
-    private Comparator<Pair<String, String>> pairReverseOrder = pairSimpleOrder.reversed();
+    private Comparator<Pair<String, Object>> pairReverseOrder = pairSimpleOrder.reversed();
+
+    private Comparator<Pair<String, Object>> numericalSortOrder = (first, second) -> {
+        var valueOrder = Long.compare((Long) first.getValue(), (Long) second.getValue());
+        if (valueOrder == 0) {
+            return first.getKey().compareTo(second.getKey());
+        }
+        return valueOrder;
+    };
+
+    private Comparator<Pair<String, Object>> numericalSortOrderReverse = numericalSortOrder.reversed();
 
     @Override
     public String call() throws Exception {
-//        Comparator<String> toUse = simpleOrder;
-        Comparator<Pair<String, String>> pairComparatorToUse = pairSimpleOrder;
+        if (dictionaryOrder && generalNumericSort) {
+            System.err.println("sort: options '-dg' are incompatible");
+            return "";
+        }
+
+        Comparator<Pair<String, Object>> pairComparatorToUse = pairSimpleOrder;
+        if (generalNumericSort) {
+            pairComparatorToUse = numericalSortOrder;
+        }
         if (reverse) {
-//            toUse = reverseOrder;
             pairComparatorToUse = pairReverseOrder;
+            if (generalNumericSort) {
+                pairComparatorToUse = numericalSortOrderReverse;
+            }
         }
 
         var linesStream = filePath.stream().map(Paths::get).flatMap(path -> {
@@ -67,7 +90,7 @@ public class Sort implements Callable<String> {
             linesStream = linesStream.map(String::stripLeading);
         }
 
-        Function<String, Pair<String, String>> lineToPair = makeMutatedCopyOfLine();
+        Function<String, Pair<String, Object>> lineToPair = makeMutatedCopyOfLine();
 
         linesStream = linesStream.map(lineToPair)
                 .sorted(pairComparatorToUse)
@@ -81,8 +104,8 @@ public class Sort implements Callable<String> {
         return linesStream.collect(Collectors.joining(System.lineSeparator()));
     }
 
-    private Function<String, Pair<String, String>> makeMutatedCopyOfLine() {
-        Function<String, Pair<String, String>> lineToPair = null;
+    private Function<String, Pair<String, Object>> makeMutatedCopyOfLine() {
+        Function<String, Pair<String, Object>> lineToPair = null;
 //        TODO: it can be both `ignoreCase` & `dictionaryOrder`
         if (ignoreCase) {
             lineToPair = line -> Pair.of(line, line.toUpperCase());
@@ -90,9 +113,15 @@ public class Sort implements Callable<String> {
 
         if (dictionaryOrder) {
             if (Objects.nonNull(lineToPair)) {
-                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), pair.getValue().replaceAll(NON_BLANK_NON_ALPHANUMERIC_REGEX, "")));
+                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), ((String) pair.getValue()).replaceAll(NON_BLANK_NON_ALPHANUMERIC_REGEX, "")));
             } else {
                 lineToPair = line -> Pair.of(line, line.replaceAll(NON_BLANK_NON_ALPHANUMERIC_REGEX, ""));
+            }
+        } else if (generalNumericSort) {
+            if (Objects.nonNull(lineToPair)) {
+                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), StringUtils.getNumericPrefixValue(pair.getKey())));
+            } else {
+                lineToPair = line -> Pair.of(line, StringUtils.getNumericPrefixValue(line));
             }
         }
 
@@ -106,8 +135,8 @@ public class Sort implements Callable<String> {
 
 class DistinctCharacter implements Predicate<String> {
 
-    private boolean ignoreCase;
-    private Set<String> uniqueSet = new HashSet<>();
+    private final boolean ignoreCase;
+    private final Set<String> uniqueSet = new HashSet<>();
 
     DistinctCharacter(boolean ignoreCase) {
         this.ignoreCase = ignoreCase;
