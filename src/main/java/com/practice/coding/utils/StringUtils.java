@@ -2,7 +2,9 @@ package com.practice.coding.utils;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public interface StringUtils {
 
@@ -25,6 +27,28 @@ public interface StringUtils {
         }
         return 0d;
     }
+
+    static String getAlphanumeric(String line) {
+        return line.chars()
+                .filter(isAlphanumeric)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+    }
+
+    IntPredicate isLowercaseAlphabet = character -> {
+        return character >= 'a' && character <= 'z';
+    };
+
+    IntPredicate isUppercaseAlphabet = character -> {
+        return character >= 'A' && character <= 'Z';
+    };
+
+    IntPredicate isAlphabetic = character -> isLowercaseAlphabet.or(isUppercaseAlphabet).test(character);
+
+    IntPredicate isDigit = character -> '0'<= character && '9' >= character;
+
+    IntPredicate isAlphanumeric = character -> isAlphabetic.or(isDigit).test(character);
+
 
     enum HumanNumeric {
         B(1), K(2), KB(2), G(3), GB(3), T(4), TB(4),

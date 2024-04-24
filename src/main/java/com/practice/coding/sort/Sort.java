@@ -49,6 +49,9 @@ public class Sort implements Callable<String> {
     @Option(names = {"-h", "--human-numeric-sort"}, description = {"compare human readable numbers (e.g., 2K 1G)"})
     private boolean humanNumericSort;
 
+    @Option(names = {"-V", "--version-sort"}, description = {"natural sort of (version) numbers within text"})
+    private boolean versionSort;
+
     private static final String NON_BLANK_NON_ALPHANUMERIC_REGEX = "[^a-zA-Z0-9\\s]+";
 
     private final Comparator<String> simpleOrder = String::compareTo;
@@ -107,6 +110,26 @@ public class Sort implements Callable<String> {
     };
 
     private final Comparator<Pair<String, Object>> humanNumericalSortReverseOrder = generalNumericalSortOrder.reversed();
+
+
+    private final Comparator<Pair<String, Object>> versionSortOrder = (first, second) -> {
+        var firstValue = (String) first.getValue();
+        var secondValue = (String) second.getValue();
+        var isFirstAlphabetic = firstValue.chars().anyMatch(StringUtils.isAlphabetic);
+        var isSecondAlphabetic = secondValue.chars().anyMatch(StringUtils.isAlphabetic);
+
+        if (isFirstAlphabetic && isSecondAlphabetic) {
+            return firstValue.compareTo(secondValue);
+        } else if (isFirstAlphabetic) {
+            return 1;
+        } else if (isSecondAlphabetic) {
+            return -1;
+        } else {
+            return firstValue.compareTo(secondValue);
+        }
+    };
+
+    private final Comparator<Pair<String, Object>> versionSortReverseOrder = versionSortOrder.reversed();
 
     @Override
     public String call() throws Exception {
@@ -175,6 +198,8 @@ public class Sort implements Callable<String> {
             pairComparatorToUse = monthSortOrder;
         } else if (humanNumericSort) {
             pairComparatorToUse = humanNumericalSortOrder;
+        } else if (versionSort) {
+            pairComparatorToUse = versionSortOrder;
         }
         if (reverse) {
             pairComparatorToUse = pairReverseOrder;
@@ -186,6 +211,8 @@ public class Sort implements Callable<String> {
                 pairComparatorToUse = monthSortReverseOrder;
             } else if (humanNumericSort) {
                 pairComparatorToUse = humanNumericalSortReverseOrder;
+            } else if (versionSort) {
+                pairComparatorToUse = versionSortReverseOrder;
             }
         }
         return pairComparatorToUse;
@@ -227,6 +254,12 @@ public class Sort implements Callable<String> {
                 lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), StringUtils.getHumanNumericUnitOrder((String) pair.getValue())));
             } else {
                 lineToPair = line -> Pair.of(line, StringUtils.getHumanNumericUnitOrder(line));
+            }
+        } else if (versionSort) {
+            if (Objects.nonNull(lineToPair)) {
+                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), StringUtils.getAlphanumeric((String) pair.getValue())));
+            } else {
+                lineToPair = line -> Pair.of(line, StringUtils.getAlphanumeric(line));
             }
         }
 

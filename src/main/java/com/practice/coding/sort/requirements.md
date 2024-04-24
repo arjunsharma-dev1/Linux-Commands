@@ -8,4 +8,4 @@
 - ✅ Human Numeric Sort
 - ✅ Numeric Sort
 - ❌ Random Sort
-- ❌ Version Sort
+- ✅ Version Sort
