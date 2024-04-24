@@ -148,6 +148,8 @@ class Cut implements Callable<List<String>> {
     @Option(names = {"-f"}, description = "Specify Fields to Display", converter = PositionConverter.class)
     private List<Position> fieldPositions;
 
+    @Option(names = {"--output-delimiter"}, description = "Delimiter to be used to show for output data")
+    private String outputDelimiter = String.valueOf(delimiter);
     @Parameters(index = "0",description = "file Path")
     private String filePath;
 
@@ -196,7 +198,7 @@ class Cut implements Callable<List<String>> {
             }
         } else {
             var escapedDelimiter = escapeDelimiterIfReserved(this.delimiter);
-            var unescapedDelimiter = String.valueOf(this.delimiter);
+//            var unescapedDelimiter = String.valueOf(this.delimiter);
             try (BufferedReader bufferedReader = new BufferedReader(reader)) {
                 return bufferedReader
                         .lines()
@@ -222,12 +224,12 @@ class Cut implements Callable<List<String>> {
                                             return Stream.of("");
                                         }
                                         if (columnPosition instanceof  RangePositionImpl rangePosition) {
-                                            return Arrays.stream(split).skip(rangePosition.getStart()).limit(rangePosition.getEnd() + 1);
+                                            return Arrays.stream(split).skip(rangePosition.getStart()).limit(rangePosition.getEnd() - rangePosition.getStart() + 1);
                                         } else {
                                             return Stream.of(split[columnPosition.getStart()]);
                                         }
                                     })
-                                    .collect(Collectors.joining(unescapedDelimiter));
+                                    .collect(Collectors.joining(outputDelimiter));
                         })
                         .toList();
             }
