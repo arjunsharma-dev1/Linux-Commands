@@ -92,14 +92,18 @@ public class Sort implements Callable<String> {
 
         Function<String, Pair<String, Object>> lineToPair = makeMutatedCopyOfLine();
 
-        linesStream = linesStream.map(lineToPair)
-                .sorted(pairComparatorToUse)
-                .map(Pair::getKey);
+        var pairsStream = linesStream.map(lineToPair);
 
+//        unique filteration must happen before sorting, inorder to avoid this dependence we will need to pass original order of the entry as well with Pair & use it in sorting
         if (unique) {
-            var distinct = new DistinctCharacter(ignoreCase);
-            linesStream = linesStream.filter(distinct);
+            var distinct = new DistinctCharacter();
+            pairsStream = pairsStream.filter(distinct);
         }
+
+        pairsStream = pairsStream.sorted(pairComparatorToUse);
+
+        linesStream = pairsStream.map(Pair::getKey);
+
 
         return linesStream.collect(Collectors.joining(System.lineSeparator()));
     }
@@ -133,20 +137,13 @@ public class Sort implements Callable<String> {
     }
 }
 
-class DistinctCharacter implements Predicate<String> {
+class DistinctCharacter implements Predicate<Pair<String, Object>> {
+    private final Set<Object> uniqueSet = new HashSet<>();
 
-    private final boolean ignoreCase;
-    private final Set<String> uniqueSet = new HashSet<>();
-
-    DistinctCharacter(boolean ignoreCase) {
-        this.ignoreCase = ignoreCase;
-    }
+    public DistinctCharacter() {}
 
     @Override
-    public boolean test(String line) {
-        if (ignoreCase) {
-            line = line.toUpperCase();
-        }
-        return uniqueSet.add(line);
+    public boolean test(Pair<String, Object> line) {
+        return uniqueSet.add(line.getValue());
     }
 }
