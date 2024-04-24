@@ -8,11 +8,9 @@ import picocli.CommandLine.Parameters;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,8 +32,14 @@ public class Sort implements Callable<String> {
     @Option(names = {"-f", "--ignore-case"}, description = {"fold lower case to upper case characters"})
     private boolean ignoreCase;
 
+    @Option(names = {"-d", "--dictionary-order"}, description = {"consider only blanks and alphanumeric characters"})
+    private boolean dictionaryOrder;
+
+    private static final String NON_BLANK_NON_ALPHANUMERIC_REGEX = "[^a-zA-Z0-9\\s]+";
+
     private Comparator<String> simpleOrder = String::compareTo;
     private Comparator<String> reverseOrder = simpleOrder.reversed();
+
 
     private Comparator<Pair<String, String>> pairSimpleOrder = (first, second) -> {
         return simpleOrder.compare(first.getValue(), second.getValue());
@@ -44,10 +48,10 @@ public class Sort implements Callable<String> {
 
     @Override
     public String call() throws Exception {
-        Comparator<String> toUse = simpleOrder;
+//        Comparator<String> toUse = simpleOrder;
         Comparator<Pair<String, String>> pairComparatorToUse = pairSimpleOrder;
         if (reverse) {
-            toUse = reverseOrder;
+//            toUse = reverseOrder;
             pairComparatorToUse = pairReverseOrder;
         }
 
@@ -63,13 +67,11 @@ public class Sort implements Callable<String> {
             linesStream = linesStream.map(String::stripLeading);
         }
 
-        if (ignoreCase) {
-            linesStream = linesStream.map(line -> Pair.of(line, line.toUpperCase()))
-                    .sorted(pairComparatorToUse)
-                    .map(Pair::getKey);
-        } else {
-            linesStream = linesStream.sorted(toUse);
-        }
+        Function<String, Pair<String, String>> lineToPair = makeMutatedCopyOfLine();
+
+        linesStream = linesStream.map(lineToPair)
+                .sorted(pairComparatorToUse)
+                .map(Pair::getKey);
 
         if (unique) {
             var distinct = new DistinctCharacter(ignoreCase);
@@ -77,6 +79,28 @@ public class Sort implements Callable<String> {
         }
 
         return linesStream.collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private Function<String, Pair<String, String>> makeMutatedCopyOfLine() {
+        Function<String, Pair<String, String>> lineToPair = null;
+//        TODO: it can be both `ignoreCase` & `dictionaryOrder`
+        if (ignoreCase) {
+            lineToPair = line -> Pair.of(line, line.toUpperCase());
+        }
+
+        if (dictionaryOrder) {
+            if (Objects.nonNull(lineToPair)) {
+                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), pair.getValue().replaceAll(NON_BLANK_NON_ALPHANUMERIC_REGEX, "")));
+            } else {
+                lineToPair = line -> Pair.of(line, line.replaceAll(NON_BLANK_NON_ALPHANUMERIC_REGEX, ""));
+            }
+        }
+
+        if (Objects.isNull(lineToPair)) {
+            lineToPair = line -> Pair.of(line, line);
+        }
+        
+        return lineToPair;
     }
 }
 
