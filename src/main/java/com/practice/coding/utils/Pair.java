@@ -20,4 +20,9 @@ public class Pair<K, V> {
     public V getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return String.format("key: '%s', value: '%s'", this.getKey(), this.getValue());
+    }
 }

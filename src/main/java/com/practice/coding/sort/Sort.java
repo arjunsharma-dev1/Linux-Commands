@@ -1,5 +1,6 @@
 package com.practice.coding.sort;
 
+import com.practice.coding.utils.MonthUtils;
 import com.practice.coding.utils.Pair;
 import com.practice.coding.utils.StringUtils;
 import picocli.CommandLine.Command;
@@ -39,6 +40,9 @@ public class Sort implements Callable<String> {
     @Option(names = {"-g", "--general-numeric-sort"}, description = {"compare according to general numerical value"})
     private boolean generalNumericSort;
 
+    @Option(names = {"-M", "--month-sort"}, description = {"compare (unknown) < 'JAN' < ... < 'DEC'"})
+    private boolean monthSort;
+
     private static final String NON_BLANK_NON_ALPHANUMERIC_REGEX = "[^a-zA-Z0-9\\s]+";
 
     private Comparator<String> simpleOrder = String::compareTo;
@@ -49,6 +53,16 @@ public class Sort implements Callable<String> {
         return simpleOrder.compare((String) first.getValue(), (String) second.getValue());
     };
     private Comparator<Pair<String, Object>> pairReverseOrder = pairSimpleOrder.reversed();
+
+    private Comparator<Pair<String, Object>> monthSortOrder = (first, second) -> {
+            var monthOrder = Integer.compare((Integer) first.getValue(), (Integer) second.getValue());
+            if (monthOrder == 0) {
+                return first.getKey().toUpperCase().compareTo(second.getKey().toUpperCase());
+            }
+            return monthOrder;
+    };
+
+    private Comparator<Pair<String, Object>> monthSortReverseOrder = monthSortOrder.reversed();
 
     private Comparator<Pair<String, Object>> numericalSortOrder = (first, second) -> {
         var valueOrder = Long.compare((Long) first.getValue(), (Long) second.getValue());
@@ -62,21 +76,28 @@ public class Sort implements Callable<String> {
 
     @Override
     public String call() throws Exception {
+        if (generalNumericSort && monthSort && dictionaryOrder) {
+            System.err.println("sort: options '-dgM' are incompatible");
+            return "";
+        }
+
         if (dictionaryOrder && generalNumericSort) {
             System.err.println("sort: options '-dg' are incompatible");
             return "";
         }
 
-        Comparator<Pair<String, Object>> pairComparatorToUse = pairSimpleOrder;
-        if (generalNumericSort) {
-            pairComparatorToUse = numericalSortOrder;
+        if (generalNumericSort && monthSort) {
+            System.err.println("sort: options '-dM' are incompatible");
+            return "";
         }
-        if (reverse) {
-            pairComparatorToUse = pairReverseOrder;
-            if (generalNumericSort) {
-                pairComparatorToUse = numericalSortOrderReverse;
-            }
+
+        if (monthSort && dictionaryOrder) {
+            System.err.println("sort: options '-gM' are incompatible");
+            return "";
         }
+
+
+        Comparator<Pair<String, Object>> pairComparatorToUse = getPairComparator();
 
         var linesStream = filePath.stream().map(Paths::get).flatMap(path -> {
             try {
@@ -94,7 +115,7 @@ public class Sort implements Callable<String> {
 
         var pairsStream = linesStream.map(lineToPair);
 
-//        unique filteration must happen before sorting, inorder to avoid this dependence we will need to pass original order of the entry as well with Pair & use it in sorting
+//        unique filtration must happen before sorting, inorder to avoid this dependence we will need to pass original order of the entry as well with Pair & use it in sorting
         if (unique) {
             var distinct = new DistinctCharacter();
             pairsStream = pairsStream.filter(distinct);
@@ -106,6 +127,24 @@ public class Sort implements Callable<String> {
 
 
         return linesStream.collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private Comparator<Pair<String, Object>> getPairComparator() {
+        Comparator<Pair<String, Object>> pairComparatorToUse = pairSimpleOrder;
+        if (generalNumericSort) {
+            pairComparatorToUse = numericalSortOrder;
+        } else if (monthSort) {
+            pairComparatorToUse = monthSortOrder;
+        }
+        if (reverse) {
+            pairComparatorToUse = pairReverseOrder;
+            if (generalNumericSort) {
+                pairComparatorToUse = numericalSortOrderReverse;
+            } else if (monthSort) {
+                pairComparatorToUse = monthSortReverseOrder;
+            }
+        }
+        return pairComparatorToUse;
     }
 
     private Function<String, Pair<String, Object>> makeMutatedCopyOfLine() {
@@ -126,6 +165,12 @@ public class Sort implements Callable<String> {
                 lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), StringUtils.getNumericPrefixValue(pair.getKey())));
             } else {
                 lineToPair = line -> Pair.of(line, StringUtils.getNumericPrefixValue(line));
+            }
+        } else if (monthSort) {
+            if (Objects.nonNull(lineToPair)) {
+                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), MonthUtils.getOrder((String) pair.getValue())));
+            } else {
+                lineToPair = line -> Pair.of(line, MonthUtils.getOrder(line));
             }
         }
 

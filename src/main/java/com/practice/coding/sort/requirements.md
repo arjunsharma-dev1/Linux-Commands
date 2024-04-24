@@ -1,0 +1,11 @@
+- ✅ Ignore Leading blanks
+- ✅ Dictionary Ordering
+- ✅ Ignore case
+- ✅ General Numeric Sort
+- ✅ Month Sort
+- ✅ Reverse Sort
+- ❌ Ignore Non-printing
+- ❌ Human Numeric Sort
+- ❌ Numeric Sort
+- ❌ Random Sort
+- ❌ Version Sort
