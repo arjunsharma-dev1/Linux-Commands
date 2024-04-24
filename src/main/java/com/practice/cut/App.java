@@ -67,7 +67,7 @@ class PositionConverter implements ITypeConverter<List<Position>> {
                 System.exit(INVALID_INPUT);
             }
             var first = split[0].isBlank()? 1 : Integer.parseInt(split[0]);
-            var second = split[1].isBlank()? Integer.MAX_VALUE: Integer.parseInt(split[1]);
+            var second = split.length == 1 || split[1].isBlank()? Integer.MAX_VALUE: Integer.parseInt(split[1]);
             pqueue.add(Pair.of(first, second));
         }
         List<Pair<Integer, Integer>> mergedIntervals = new ArrayList<>();
@@ -79,13 +79,6 @@ class PositionConverter implements ITypeConverter<List<Position>> {
                 break;
             }
             var second = pqueue.poll();
-            /*if (first.getKey().equals(second.getKey())) {
-                if (first.getValue() >= second.getValue()) {
-                    pqueue.add(first);
-                } else {
-                    pqueue.add(second);
-                }
-            } else */
             if (first.getValue() >= second.getKey()) {
                 pqueue.add(Pair.of(
                         Math.min(first.getKey(), second.getKey()),
@@ -108,27 +101,7 @@ class PositionConverter implements ITypeConverter<List<Position>> {
 
         var intervals = getIntervals(entries);
 
-            return /*Arrays.stream(entries)
-                .map((entry) -> {
-                    var split = entry.split("-");
-                    if (split.length == 0) {
-                        System.err.println("cut: invalid range with no endpoint: -");
-                        System.exit(INVALID_INPUT);
-                    } else if (split.length > 2) {
-                        System.err.println("cut: invalid field range");
-                        System.exit(INVALID_INPUT);
-                    }
-                    if (entry.startsWith(INTERVAL_SEPARATOR)) {
-                        return new RangePositionImpl(IntervalEnd.at(split[1]));
-                    } else if (entry.endsWith(INTERVAL_SEPARATOR)) {
-                        return new RangePositionImpl(IntervalStart.at(split[0]));
-                    } else if (entry.contains("-")) {
-                        return new RangePositionImpl(IntervalStart.at(split[0]), IntervalEnd.at(split[1]));
-                    } else {
-                        return new RangePositionImpl(IntervalStart.at(split[0]), IntervalEnd.at(split[0]));
-                    }
-                })*/
-            intervals.stream()
+        return intervals.stream()
                 .map(intervalPair -> new RangePositionImpl(IntervalStart.at(intervalPair.getKey()), IntervalEnd.at(intervalPair.getValue())))
                 .map(position -> (Position) position)
                 .toList();
@@ -144,7 +117,7 @@ interface IntervalValue {
     int getValue();
 }
 
-class IntervalStart implements  IntervalValue{
+class IntervalStart implements IntervalValue {
     private final int position;
 
     IntervalStart(int position) {
@@ -168,7 +141,7 @@ class IntervalStart implements  IntervalValue{
     }
 }
 
-class IntervalEnd implements IntervalValue{
+class IntervalEnd implements IntervalValue {
     private final int position;
 
     IntervalEnd(int position) {
@@ -239,11 +212,15 @@ class Cut implements Callable<List<String>> {
 
     @Option(names = {"-f"}, description = "Specify Fields to Display", converter = PositionConverter.class)
     private List<Position> fieldPositions;
-
     @Option(names = {"--output-delimiter"}, description = "Delimiter to be used to show for output data")
     private String outputDelimiter = String.valueOf(delimiter);
+
+    @Option(names = {"--complement"}, description = "complement the set of selected bytes, characters or fields")
+    private boolean complement;
+
     @Parameters(index = "0",description = "file Path")
     private String filePath;
+
 
     private Reader getInput() {
         if (Objects.isNull(filePath) || filePath.isBlank() || "-".equals(filePath.trim())) {
@@ -270,6 +247,14 @@ class Cut implements Callable<List<String>> {
             return List.of();
         }
 
+        if (complement) {
+            if (Objects.nonNull(positions)) {
+                positions = complementIntervals(positions);
+            } else if (Objects.nonNull(fieldPositions)) {
+                fieldPositions = complementIntervals(fieldPositions);
+            }
+        }
+
         if (Objects.nonNull(positions)) {
             try (BufferedReader bufferedReader = new BufferedReader(reader)) {
                 return bufferedReader
@@ -277,11 +262,7 @@ class Cut implements Callable<List<String>> {
                         .map(line -> positions.stream()
                                 .filter((bytePosition) -> line.length() > bytePosition.getStart())
                                 .map(bytePosition -> {
-//                                    if (bytePosition instanceof RangePositionImpl rangeBytePosition) {
-                                        return line.substring(bytePosition.getStart(), bytePosition.getEnd()+1);
-                                    /*} else {
-                                        return Character.toString(line.charAt(bytePosition.getStart()));
-                                    }*/
+                                    return line.substring(bytePosition.getStart(), Math.min(line.length(), bytePosition.getEnd() + 1));
                                 })
                                 .map(Object::toString)
                                 .collect(Collectors.joining(""))
@@ -290,7 +271,6 @@ class Cut implements Callable<List<String>> {
             }
         } else {
             var escapedDelimiter = escapeDelimiterIfReserved(this.delimiter);
-//            var unescapedDelimiter = String.valueOf(this.delimiter);
             try (BufferedReader bufferedReader = new BufferedReader(reader)) {
                 return bufferedReader
                         .lines()
@@ -299,11 +279,7 @@ class Cut implements Callable<List<String>> {
 
                             var maxFieldColumnPosition = positionsForLine.stream()
                                     .mapToInt(position -> {
-//                                        if (position instanceof RangePositionImpl rangePosition) {
                                             return Math.max(position.getStart(), position.getEnd());
-                                        /*} else {
-                                            return position.getStart();
-                                        }*/
                                     })
                                     .map(position -> position + 1)
                                     .max()
@@ -315,17 +291,41 @@ class Cut implements Callable<List<String>> {
                                         if (split.length <= columnPosition.getStart()) {
                                             return Stream.of("");
                                         }
-//                                        if (columnPosition instanceof  RangePositionImpl rangePosition) {
-                                            return Arrays.stream(split).skip(columnPosition.getStart()).limit(columnPosition.getEnd() - columnPosition.getStart() + 1);
-                                        /*} else {
-                                            return Stream.of(split[columnPosition.getStart()]);
-                                        }*/
+                                        return Arrays.stream(split)
+                                                .skip(columnPosition.getStart())
+                                                .limit(columnPosition.getEnd() - columnPosition.getStart() + 1);
                                     })
                                     .collect(Collectors.joining(outputDelimiter));
                         })
                         .toList();
             }
         }
+    }
+
+    private List<Position> complementIntervals(List<Position> positions) {
+        List<Position> complementRanges = new ArrayList<>();
+        if (!positions.isEmpty()) {
+            var start = positions.get(0);
+            if (start.getStart() != 0) {
+                complementRanges.add(new RangePositionImpl(IntervalStart.atStart(), IntervalEnd.at(start.getStart())));
+            }
+        }
+        for (int index = 0; index < positions.size() - 1; index++) {
+            var current = positions.get(index);
+            var next = positions.get(index + 1);
+            if (next.getStart() - current.getEnd() > 0) {
+                complementRanges.add(new RangePositionImpl(IntervalStart.at(current.getEnd()+2), IntervalEnd.at(next.getStart())));
+            }
+        }
+
+        if (positions.size() > 1) {
+            var last = positions.get(positions.size()-1);
+            var end = last.getEnd() + 1;
+            if (end < Integer.MAX_VALUE) {
+                complementRanges.add(new RangePositionImpl(IntervalStart.at(last.getEnd() + 2), IntervalEnd.atEnd()));
+            }
+        }
+        return complementRanges;
     }
 
     private String escapeDelimiterIfReserved(char delimiter) {
