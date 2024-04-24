@@ -1,5 +1,10 @@
-package com.practice.cut;
+package com.practice.coding.cut;
 
+import com.practice.coding.cut.type_converter.PositionConverter;
+import com.practice.coding.cut.model.Range;
+import com.practice.coding.cut.model.RangeEnd;
+import com.practice.coding.cut.model.RangeImpl;
+import com.practice.coding.cut.model.RangeStart;
 import picocli.CommandLine;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;

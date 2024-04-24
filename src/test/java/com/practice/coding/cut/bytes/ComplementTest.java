@@ -1,7 +1,7 @@
 
-package com.practice.cut.bytes;
+package com.practice.coding.cut.bytes;
 
-import com.practice.cut.AppTest;
+import com.practice.coding.AppTest;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 

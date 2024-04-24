@@ -1,5 +1,6 @@
-package com.practice.cut;
+package com.practice.coding;
 
+import com.practice.coding.cut.Cut;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;

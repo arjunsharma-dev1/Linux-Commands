@@ -1,6 +1,6 @@
-package com.practice.cut;
+package com.practice.coding.utils;
 
-class Pair<K, V> {
+public class Pair<K, V> {
     final K key;
     final V value;
 

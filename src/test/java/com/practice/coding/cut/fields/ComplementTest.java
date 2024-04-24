@@ -1,7 +1,7 @@
 
-package com.practice.cut.fields;
+package com.practice.coding.cut.fields;
 
-import com.practice.cut.AppTest;
+import com.practice.coding.AppTest;
 import junit.framework.TestCase;
 
 public class ComplementTest extends TestCase {
