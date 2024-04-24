@@ -3,23 +3,41 @@ package com.practice.coding.sort;
 import com.practice.coding.utils.MonthUtils;
 import com.practice.coding.utils.Pair;
 import com.practice.coding.utils.StringUtils;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedSourceVersion;
+import javax.lang.model.SourceVersion;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Command(name = "sort", description = "Write sorted concatenation of all FILE(s) to standard output.")
 public class Sort implements Callable<String> {
+
+    /*interface SortOptionConstants {
+        String REVERSE_SHORT = "-r";
+        String REVERSE_LONG = "--reverse";
+
+        String UNIQUE_SHORT = "-u";
+        String UNIQUE_LONG = "--unique";
+    }*/
+
     @Parameters(index = "0",description = "file Path")
     private List<String> filePath;
 
@@ -147,6 +165,7 @@ public class Sort implements Callable<String> {
     public String call() throws Exception {
 //        TODO: need to define `type` for each flag & use FlagConverter get the boolean value in that `type`
 //        TODO: create a method which take all of these flag `types` and throw errors on illegal combinations
+
 
         reportIncompatiblePairs(
                 generalNumericSort,

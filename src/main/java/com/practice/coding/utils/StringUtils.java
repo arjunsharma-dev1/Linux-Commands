@@ -49,6 +49,23 @@ public interface StringUtils {
 
     IntPredicate isAlphanumeric = character -> isAlphabetic.or(isDigit).test(character);
 
+    static String capitalize(String name) {
+        if (Objects.isNull(name)) {
+            return null;
+        }
+        if (name.isBlank()) {
+            return "";
+        }
+        if (name.trim().length() == 1) {
+            return name.toUpperCase();
+        }
+        return String.format(
+                "%s%s",
+                Character.toUpperCase(name.charAt(0)),
+                name.toLowerCase().substring(1)
+        );
+    }
+
     enum HumanNumeric {
         B(1), K(2), KB(2), G(3), GB(3), T(4), TB(4),
         P(5), PB(5), E(6), EB(6), Z(7), ZB(7), Y(8), YB(8);
