@@ -4,9 +4,8 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-public interface StringUtils {
+public interface SortUtils {
 
     Pattern simpleNumberPattern = Pattern.compile("^[-+]?[0-9]*\\.?[0-9]+");
     static float getNumericPrefixValue(String content) {

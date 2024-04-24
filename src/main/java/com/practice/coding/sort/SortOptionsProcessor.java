@@ -1,7 +1,6 @@
 package com.practice.coding.sort;
 
-import com.practice.coding.sort.SortOptionsConstants;
-import com.practice.coding.utils.StringUtils;
+import com.practice.coding.utils.SortUtils;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.util.TreePathScanner;
 import com.sun.source.util.Trees;
@@ -18,6 +17,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Set;
 
+//@AutoService(AbstractProcessor.class)
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_17)
 public class SortOptionsProcessor extends AbstractProcessor {
@@ -30,7 +30,8 @@ public class SortOptionsProcessor extends AbstractProcessor {
                 .filter(element -> element.getSimpleName().contentEquals(SortOptions.class.getSimpleName()))
                 .findFirst();
 
-        Trees trees = Trees.instance(processingEnv);
+
+        var trees = Trees.instance(processingEnv);
 
         if (sortOptionsElementOptional.isEmpty()) {
             return false;
@@ -39,16 +40,18 @@ public class SortOptionsProcessor extends AbstractProcessor {
         var sortOptionsElement = sortOptionsElementOptional.get();
         final String LONG = "LONG";
         final String SHORT = "SHORT";
-
         try {
+//            Files.deleteIfExists(Paths.get("SortOptionsConstants"));
             var jfo = processingEnv.getFiler()
-                            .createSourceFile("com.practice.coding.sort.SortOptionsConstants");
+                            .createSourceFile("SortOptionsConstants");
             try (Writer writer = jfo.openWriter()) {
-                writer.write(String.format(
+                writer.write(
                         """
-                        package com.practice.coding.sort;%n
-                        public interface SortOptionsConstants {%n"""
-                ));
+                                package com.practice.coding.sort;
+                                                        
+                                public interface SortOptionsConstants {
+                                        """
+                );
                 sortOptionsElement.getEnclosedElements()
                         .stream()
                         .filter(enclosedElement -> enclosedElement.getKind() == ElementKind.FIELD)
@@ -69,8 +72,8 @@ public class SortOptionsProcessor extends AbstractProcessor {
                                 }
                             }.scan(elementTreePath, null);
 
-                            var name = enclosedElement.getSimpleName().toString().toLowerCase();
-                            var subTypeName = StringUtils.capitalize(name);
+                            var name = enclosedElement.getSimpleName().toString();
+                            var subTypeName = SortUtils.capitalize(name);
                             try {
                                 writer.write(
                                         String.format("""
@@ -80,8 +83,8 @@ public class SortOptionsProcessor extends AbstractProcessor {
                                                 }
                                                 """,
                                                 subTypeName,
-                                                LONG, longOption[0],
-                                                SHORT, shortOption[0])
+                                                SHORT, longOption[0],
+                                                LONG, shortOption[0])
                                 );
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
