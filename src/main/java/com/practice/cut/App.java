@@ -204,14 +204,18 @@ class RangePositionImpl implements Position {
 
 @Command(name = "cut", version = "1.0.0", mixinStandardHelpOptions = true)
 class Cut implements Callable<List<String>> {
+    private static final char DEFAULT_INPUT_DELIMITER = '\t';
     @Option(names = {"-d"}, description = "Delimiter")
-    private char delimiter = '\t';
+    private char delimiter = DEFAULT_INPUT_DELIMITER;
 
-    @Option(names = {"-b", "-c"}, description = "Specify Byte to Display", converter = PositionConverter.class)
+    @Option(names = {"-b", "-c"}, description = "select only these bytes", converter = PositionConverter.class)
     private List<Position> positions;
 
-    @Option(names = {"-f"}, description = "Specify Fields to Display", converter = PositionConverter.class)
+    @Option(names = {"-f"},
+            description = "select only these fields;  also print any line that contains no delimiter character, unless the -s option is specified",
+            converter = PositionConverter.class)
     private List<Position> fieldPositions;
+
     @Option(names = {"--output-delimiter"}, description = "Delimiter to be used to show for output data")
     private String outputDelimiter = String.valueOf(delimiter);
 
@@ -221,6 +225,8 @@ class Cut implements Callable<List<String>> {
     @Parameters(index = "0",description = "file Path")
     private String filePath;
 
+    @Option(names = {"-s", "--only-delimited"}, description = "do not print lines not containing delimiters")
+    private boolean onlyDelimited;
 
     private Reader getInput() {
         if (Objects.isNull(filePath) || filePath.isBlank() || "-".equals(filePath.trim())) {
@@ -242,6 +248,15 @@ class Cut implements Callable<List<String>> {
 
     @Override
     public List<String> call() throws Exception {
+        if (Objects.nonNull(positions)) {
+            if (delimiter != DEFAULT_INPUT_DELIMITER) {
+                System.err.println("cut: an input delimiter may be specified only when operating on fields");
+            }
+            if (onlyDelimited) {
+                System.err.println("cut: suppressing non-delimited lines makes sense only when operating on fields");
+            }
+        }
+
         Reader reader = getInput();
         if (Objects.isNull(reader)) {
             return List.of();
@@ -287,6 +302,12 @@ class Cut implements Callable<List<String>> {
 
                             var split = line.split(escapedDelimiter, maxFieldColumnPosition + 1);
                             return fieldPositions.stream()
+                                    .filter(entry -> {
+                                        if (split.length == 1 && onlyDelimited) {
+                                            return false;
+                                        }
+                                        return true;
+                                    })
                                     .flatMap(columnPosition -> {
                                         if (split.length <= columnPosition.getStart()) {
                                             return Stream.of("");
@@ -296,6 +317,12 @@ class Cut implements Callable<List<String>> {
                                                 .limit(columnPosition.getEnd() - columnPosition.getStart() + 1);
                                     })
                                     .collect(Collectors.joining(outputDelimiter));
+                        })
+                        .filter(response -> {
+                            if (onlyDelimited && response.isBlank()) {
+                                return false;
+                            }
+                            return true;
                         })
                         .toList();
             }

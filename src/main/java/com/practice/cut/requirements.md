@@ -6,4 +6,5 @@
 - ✅ auto-correct overlap ranges
 - ✅ open-ended ranges query
 - ✅ complement queries
+- ✅ print only delimited lines when querying fields
 - ❌
