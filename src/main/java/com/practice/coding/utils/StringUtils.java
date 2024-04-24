@@ -49,7 +49,6 @@ public interface StringUtils {
 
     IntPredicate isAlphanumeric = character -> isAlphabetic.or(isDigit).test(character);
 
-
     enum HumanNumeric {
         B(1), K(2), KB(2), G(3), GB(3), T(4), TB(4),
         P(5), PB(5), E(6), EB(6), Z(7), ZB(7), Y(8), YB(8);

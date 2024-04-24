@@ -7,5 +7,5 @@
 - ❌ Ignore Non-printing
 - ✅ Human Numeric Sort
 - ✅ Numeric Sort
-- ❌ Random Sort
+- ✅ Random Sort
 - ✅ Version Sort

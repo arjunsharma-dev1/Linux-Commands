@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -51,6 +52,9 @@ public class Sort implements Callable<String> {
 
     @Option(names = {"-V", "--version-sort"}, description = {"natural sort of (version) numbers within text"})
     private boolean versionSort;
+
+    @Option(names = {"-R", "--random-sort"}, description = {"shuffle, but group identical keys"})
+    private boolean randomSort;
 
     private static final String NON_BLANK_NON_ALPHANUMERIC_REGEX = "[^a-zA-Z0-9\\s]+";
 
@@ -131,6 +135,14 @@ public class Sort implements Callable<String> {
 
     private final Comparator<Pair<String, Object>> versionSortReverseOrder = versionSortOrder.reversed();
 
+
+    private final Comparator<Pair<String, Object>> randomSortOrder = (first, second) -> {
+        long firstOrder = (long) first.getValue();
+        long secondOrder = (long) second.getValue();
+        return Long.compare(firstOrder, secondOrder);
+    };
+    private final Comparator<Pair<String, Object>> randomSortReverseOrder = randomSortOrder.reversed();
+
     @Override
     public String call() throws Exception {
 //        TODO: need to define `type` for each flag & use FlagConverter get the boolean value in that `type`
@@ -200,6 +212,8 @@ public class Sort implements Callable<String> {
             pairComparatorToUse = humanNumericalSortOrder;
         } else if (versionSort) {
             pairComparatorToUse = versionSortOrder;
+        } else if (randomSort) {
+            pairComparatorToUse = randomSortOrder;
         }
         if (reverse) {
             pairComparatorToUse = pairReverseOrder;
@@ -213,6 +227,8 @@ public class Sort implements Callable<String> {
                 pairComparatorToUse = humanNumericalSortReverseOrder;
             } else if (versionSort) {
                 pairComparatorToUse = versionSortReverseOrder;
+            } else if (randomSort) {
+                pairComparatorToUse = randomSortReverseOrder;
             }
         }
         return pairComparatorToUse;
@@ -260,6 +276,13 @@ public class Sort implements Callable<String> {
                 lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), StringUtils.getAlphanumeric((String) pair.getValue())));
             } else {
                 lineToPair = line -> Pair.of(line, StringUtils.getAlphanumeric(line));
+            }
+        } else if (randomSort) {
+            var randomOrder = new RandomSortOrder();
+            if (Objects.nonNull(lineToPair)) {
+                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), randomOrder.getOrder((String) pair.getValue())));
+            } else {
+                lineToPair = line -> Pair.of(line, randomOrder.getOrder(line));
             }
         }
 
