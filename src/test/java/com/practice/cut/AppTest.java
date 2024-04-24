@@ -3,6 +3,10 @@ package com.practice.cut;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import picocli.CommandLine;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Unit test for simple App.
@@ -23,8 +27,7 @@ public class AppTest
     /**
      * @return the suite of tests being tested
      */
-    public static Test suite()
-    {
+    public static Test suite() {
         return new TestSuite( AppTest.class );
     }
 
@@ -34,5 +37,13 @@ public class AppTest
     public void testApp()
     {
         assertTrue( true );
+    }
+
+
+    public static String call(String... args) {
+        var commandLine = new CommandLine(new Cut());
+        var exitCode = commandLine.execute(args);
+        var result = commandLine.getExecutionResult();
+        return ((List<String>) result).stream().collect(Collectors.joining("\n"));
     }
 }
