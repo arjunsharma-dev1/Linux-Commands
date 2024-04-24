@@ -43,18 +43,21 @@ public class Sort implements Callable<String> {
     @Option(names = {"-M", "--month-sort"}, description = {"compare (unknown) < 'JAN' < ... < 'DEC'"})
     private boolean monthSort;
 
+    @Option(names = {"-n", "--numeric-sort"}, description = {"compare according to string numerical value"})
+    private boolean numericSort;
+
     private static final String NON_BLANK_NON_ALPHANUMERIC_REGEX = "[^a-zA-Z0-9\\s]+";
 
-    private Comparator<String> simpleOrder = String::compareTo;
-    private Comparator<String> reverseOrder = simpleOrder.reversed();
+    private final Comparator<String> simpleOrder = String::compareTo;
+    private final Comparator<String> reverseOrder = simpleOrder.reversed();
 
 
-    private Comparator<Pair<String, Object>> pairSimpleOrder = (first, second) -> {
+    private final Comparator<Pair<String, Object>> pairSimpleOrder = (first, second) -> {
         return simpleOrder.compare((String) first.getValue(), (String) second.getValue());
     };
-    private Comparator<Pair<String, Object>> pairReverseOrder = pairSimpleOrder.reversed();
+    private final Comparator<Pair<String, Object>> pairReverseOrder = pairSimpleOrder.reversed();
 
-    private Comparator<Pair<String, Object>> monthSortOrder = (first, second) -> {
+    private final Comparator<Pair<String, Object>> monthSortOrder = (first, second) -> {
             var monthOrder = Integer.compare((Integer) first.getValue(), (Integer) second.getValue());
             if (monthOrder == 0) {
                 return first.getKey().toUpperCase().compareTo(second.getKey().toUpperCase());
@@ -62,17 +65,27 @@ public class Sort implements Callable<String> {
             return monthOrder;
     };
 
-    private Comparator<Pair<String, Object>> monthSortReverseOrder = monthSortOrder.reversed();
+    private final Comparator<Pair<String, Object>> monthSortReverseOrder = monthSortOrder.reversed();
 
-    private Comparator<Pair<String, Object>> numericalSortOrder = (first, second) -> {
-        var valueOrder = Long.compare((Long) first.getValue(), (Long) second.getValue());
+    private final Comparator<Pair<String, Object>> generalNumericalSortOrder = (first, second) -> {
+        var valueOrder = Double.compare((Double) first.getValue(), (Double) second.getValue());
         if (valueOrder == 0) {
             return first.getKey().compareTo(second.getKey());
         }
         return valueOrder;
     };
 
-    private Comparator<Pair<String, Object>> numericalSortOrderReverse = numericalSortOrder.reversed();
+    private final Comparator<Pair<String, Object>> generalNumericalSortOrderReverse = generalNumericalSortOrder.reversed();
+
+    private final Comparator<Pair<String, Object>> numericalSortOrder = (first, second) -> {
+        var valueOrder = Float.compare((Float) first.getValue(), (Float) second.getValue());
+        if (valueOrder == 0) {
+            return first.getKey().compareTo(second.getKey());
+        }
+        return valueOrder;
+    };
+
+    private final Comparator<Pair<String, Object>> numericalSortOrderReverse = numericalSortOrder.reversed();
 
     @Override
     public String call() throws Exception {
@@ -132,6 +145,8 @@ public class Sort implements Callable<String> {
     private Comparator<Pair<String, Object>> getPairComparator() {
         Comparator<Pair<String, Object>> pairComparatorToUse = pairSimpleOrder;
         if (generalNumericSort) {
+            pairComparatorToUse = generalNumericalSortOrder;
+        } else if (numericSort) {
             pairComparatorToUse = numericalSortOrder;
         } else if (monthSort) {
             pairComparatorToUse = monthSortOrder;
@@ -139,6 +154,8 @@ public class Sort implements Callable<String> {
         if (reverse) {
             pairComparatorToUse = pairReverseOrder;
             if (generalNumericSort) {
+                pairComparatorToUse = generalNumericalSortOrderReverse;
+            } else if (numericSort) {
                 pairComparatorToUse = numericalSortOrderReverse;
             } else if (monthSort) {
                 pairComparatorToUse = monthSortReverseOrder;
@@ -161,6 +178,12 @@ public class Sort implements Callable<String> {
                 lineToPair = line -> Pair.of(line, line.replaceAll(NON_BLANK_NON_ALPHANUMERIC_REGEX, ""));
             }
         } else if (generalNumericSort) {
+            if (Objects.nonNull(lineToPair)) {
+                lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), StringUtils.getNumericPrefixValueForGeneral(pair.getKey())));
+            } else {
+                lineToPair = line -> Pair.of(line, StringUtils.getNumericPrefixValueForGeneral(line));
+            }
+        } else if (numericSort) {
             if (Objects.nonNull(lineToPair)) {
                 lineToPair = lineToPair.andThen(pair -> Pair.of(pair.getKey(), StringUtils.getNumericPrefixValue(pair.getKey())));
             } else {

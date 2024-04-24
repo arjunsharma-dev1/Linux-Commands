@@ -1,18 +1,27 @@
 package com.practice.coding.utils;
 
+import java.util.regex.Pattern;
+
 public interface StringUtils {
-    static long getNumericPrefixValue(String content) {
-        long number = 0L;
-        for (int index = 0; index < content.length(); index++) {
-            var ch = content.charAt(index);
-            if (!Character.isDigit(ch)) {
-                return number;
-            }
-            if (number == 0) {
-                number = 1L;
-            }
-            number = (number * 10) + Integer.parseInt(Character.toString(ch));
+
+    Pattern numberPattern = Pattern.compile("^[-+]?[0-9]*\\.?[0-9]+");
+    static float getNumericPrefixValue(String content) {
+        var matcher = numberPattern.matcher(content);
+        if (matcher.find()) {
+//            TODO: NumberFormatException
+            return Float.parseFloat(matcher.group(0));
         }
-        return number;
+        return 0f;
+    }
+
+    Pattern numberGeneralPattern = Pattern.compile("^[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
+
+    static double getNumericPrefixValueForGeneral(String line) {
+        var matcher = numberGeneralPattern.matcher(line);
+        if (matcher.find()) {
+//            TODO: NumberFormatException
+            return Double.parseDouble(matcher.group(0));
+        }
+        return 0d;
     }
 }
