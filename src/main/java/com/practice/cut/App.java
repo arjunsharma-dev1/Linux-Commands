@@ -10,9 +10,11 @@ import java.io.*;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class App {
@@ -32,25 +34,64 @@ public class App {
 }
 
 
-class BytePositionConverter implements ITypeConverter<List<Position>> {
+class Pair<K, V> {
+    final K key;
+    final V value;
 
+    private Pair(K key, V value) {
+        this.key = key;
+        this.value = value;
+    }
+
+    public static <K, V> Pair<K, V> of(K key, V value) {
+        return new Pair<>(key, value);
+    }
+
+    public K getKey() {
+        return key;
+    }
+
+    public V getValue() {
+        return value;
+    }
+}
+
+class PositionConverter implements ITypeConverter<List<Position>> {
+
+    /*private List<Pair<Integer, Integer>> getIntervals(String[] intervals) {
+        for (var interval: intervals) {
+
+        }
+    }*/
+
+    private static final int INVALID_INPUT = 2;
+
+    private static final String INTERVAL_SEPARATOR = "-";
     @Override
     public List<Position> convert(String s) {
         var entries = s.split(",");
-        return Arrays.stream(entries)
-                .map(entry -> entry.split("-"))
-                .map(entrySplit -> {
-                    if (entrySplit.length == 1) {
-                        var start = Integer.parseInt(entrySplit[0]);
-                        return (Position) new BytePosition(start);
-                    } else if (entrySplit.length == 2) {
-                        var start = Integer.parseInt(entrySplit[0]);
-                        var end = Integer.parseInt(entrySplit[1]);
-                        return new RangeBytePosition(start, end);
+
+            return Arrays.stream(entries)
+                .map((entry) -> {
+                    var split = entry.split("-");
+                    if (split.length == 0) {
+                        System.err.println("cut: invalid range with no endpoint: -");
+                        System.exit(INVALID_INPUT);
+                    } else if (split.length > 2) {
+                        System.err.println("cut: invalid field range");
+                        System.exit(INVALID_INPUT);
+                    }
+                    if (entry.startsWith(INTERVAL_SEPARATOR)) {
+                        return new RangePositionImpl(1, Integer.parseInt(split[1]));
+                    } else if (entry.endsWith(INTERVAL_SEPARATOR)) {
+                        return new RangePositionImpl(Integer.parseInt(split[0]), Integer.MAX_VALUE);
+                    } else if (entry.contains("-")) {
+                        return new RangePositionImpl(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
                     } else {
-                        return null;
+                        return new PositionImpl(Integer.parseInt(split[0]));
                     }
                 })
+                .map(position -> (Position) position)
                 .toList();
     }
 }
@@ -59,10 +100,10 @@ interface Position {
     int getStart();
 }
 
-class BytePosition implements Position {
+class PositionImpl implements Position {
     private final int start;
 
-    BytePosition(int start) {
+    PositionImpl(int start) {
         this.start = start - 1;
     }
 
@@ -77,10 +118,10 @@ class BytePosition implements Position {
     }
 }
 
-class RangeBytePosition extends BytePosition {
+class RangePositionImpl extends PositionImpl {
     private final Integer end;
 
-    RangeBytePosition(int start, int end) {
+    RangePositionImpl(int start, int end) {
         super(start);
         this.end = end - 1;
     }
@@ -98,18 +139,14 @@ class RangeBytePosition extends BytePosition {
 
 @Command(name = "cut", version = "1.0.0", mixinStandardHelpOptions = true)
 class Cut implements Callable<List<String>> {
-
-    @Option(names = {"-f"}, description = "Parameter Starting with -", split = ",")
-    private int[] fieldColumnPosition;
-
     @Option(names = {"-d"}, description = "Delimiter")
     private char delimiter = '\t';
 
-    @Option(names = {"-b", "-c"}, description = "Specify Byte to Display", converter = BytePositionConverter.class)
-    private List<Position> bytesPosition;
+    @Option(names = {"-b", "-c"}, description = "Specify Byte to Display", converter = PositionConverter.class)
+    private List<Position> positions;
 
-    /*@Option(names = {"-c"}, description = "Specify Character to Display", split = ",")
-    private int[] charsPositions;*/
+    @Option(names = {"-f"}, description = "Specify Fields to Display", converter = PositionConverter.class)
+    private List<Position> fieldPositions;
 
     @Parameters(index = "0",description = "file Path")
     private String filePath;
@@ -118,7 +155,7 @@ class Cut implements Callable<List<String>> {
         if (Objects.isNull(filePath) || filePath.isBlank() || "-".equals(filePath.trim())) {
             return new InputStreamReader(System.in);
         } else {
-            File file = Paths.get(filePath).toFile();
+            var file = Paths.get(filePath).toFile();
             if(!file.exists()) {
                 System.err.printf("cut: %s: No such file or directory%s", file.getName(), System.lineSeparator());
                 return null;
@@ -139,14 +176,14 @@ class Cut implements Callable<List<String>> {
             return List.of();
         }
 
-        if (Objects.nonNull(bytesPosition)) {
+        if (Objects.nonNull(positions)) {
             try (BufferedReader bufferedReader = new BufferedReader(reader)) {
                 return bufferedReader
                         .lines()
-                        .map(line -> bytesPosition.stream()
+                        .map(line -> positions.stream()
                                 .filter((bytePosition) -> line.length() > bytePosition.getStart())
                                 .map(bytePosition -> {
-                                    if (bytePosition instanceof RangeBytePosition rangeBytePosition) {
+                                    if (bytePosition instanceof RangePositionImpl rangeBytePosition) {
                                         return line.substring(rangeBytePosition.getStart(), rangeBytePosition.getEnd()+1);
                                     } else {
                                         return Character.toString(line.charAt(bytePosition.getStart()));
@@ -164,14 +201,31 @@ class Cut implements Callable<List<String>> {
                 return bufferedReader
                         .lines()
                         .map(line -> {
-                            var maxFieldColumnPosition = Arrays.stream(fieldColumnPosition).max().getAsInt();
-                            var split = line.split(escapedDelimiter, maxFieldColumnPosition + 1);
-                            return Arrays.stream(fieldColumnPosition)
-                                    .mapToObj(columnPosition -> {
-                                        if (split.length <= columnPosition - 1) {
-                                            return "";
+                            var positionsForLine = fieldPositions.stream().filter(position -> position.getStart() < line.length()).toList();
+
+                            var maxFieldColumnPosition = positionsForLine.stream()
+                                    .mapToInt(position -> {
+                                        if (position instanceof RangePositionImpl rangePosition) {
+                                            return Math.max(rangePosition.getStart(), rangePosition.getEnd());
+                                        } else {
+                                            return position.getStart();
                                         }
-                                        return split[columnPosition - 1];
+                                    })
+                                    .map(position -> position + 1)
+                                    .max()
+                                    .orElse(line.length()); 
+
+                            var split = line.split(escapedDelimiter, maxFieldColumnPosition + 1);
+                            return fieldPositions.stream()
+                                    .flatMap(columnPosition -> {
+                                        if (split.length <= columnPosition.getStart()) {
+                                            return Stream.of("");
+                                        }
+                                        if (columnPosition instanceof  RangePositionImpl rangePosition) {
+                                            return Arrays.stream(split).skip(rangePosition.getStart()).limit(rangePosition.getEnd() + 1);
+                                        } else {
+                                            return Stream.of(split[columnPosition.getStart()]);
+                                        }
                                     })
                                     .collect(Collectors.joining(unescapedDelimiter));
                         })
