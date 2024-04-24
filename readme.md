@@ -1,6 +1,6 @@
 
 # Cut
- a command to extract data from the file.
+ a command to extract data from the file / stdin.
 
  `-f` option to specify the range(s) of fields/specific field(s) to extract.
 
@@ -24,7 +24,7 @@
   3. for `-b` & `-c` option implementation is same, due to which, this implementation be able to handle unicode characters as expected. 
 
 # Sort
- a command to sort data from file(s)
+ a command to sort data from file(s) / stdin
  
  `-r` or `--reverse` option to reverse the output of the sort.
 
@@ -46,8 +46,7 @@
  
  `-R` or `--random-sort` option to sort entries randomly
 
- Note: 
- 
+ Note:
  1. Multiple file paths can be specified to sort the entries as a single unit.
  2. `-f`, `-g`, `-M`, `-n`, `-h`, `-V`, `-R` are mutually exclusive options.
  3. Testcases for Sort are due. 
