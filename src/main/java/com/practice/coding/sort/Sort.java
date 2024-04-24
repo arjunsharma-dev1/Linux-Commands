@@ -147,26 +147,15 @@ public class Sort implements Callable<String> {
     public String call() throws Exception {
 //        TODO: need to define `type` for each flag & use FlagConverter get the boolean value in that `type`
 //        TODO: create a method which take all of these flag `types` and throw errors on illegal combinations
-        if (generalNumericSort && monthSort && dictionaryOrder) {
-            System.err.println("sort: options '-dgM' are incompatible");
-            return "";
-        }
 
-        if (dictionaryOrder && generalNumericSort) {
-            System.err.println("sort: options '-dg' are incompatible");
-            return "";
-        }
-
-        if (generalNumericSort && monthSort) {
-            System.err.println("sort: options '-dM' are incompatible");
-            return "";
-        }
-
-        if (monthSort && dictionaryOrder) {
-            System.err.println("sort: options '-gM' are incompatible");
-            return "";
-        }
-
+        reportIncompatiblePairs(
+                generalNumericSort,
+                dictionaryOrder,
+                monthSort,
+                numericSort,
+                versionSort,
+                randomSort
+        );
 
         Comparator<Pair<String, Object>> pairComparatorToUse = getPairComparator();
 
@@ -198,6 +187,38 @@ public class Sort implements Callable<String> {
 
 
         return linesStream.collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private void reportIncompatiblePairs(boolean generalNumericSort,
+                                         boolean dictionaryOrder,
+                                         boolean monthSort,
+                                         boolean numericSort,
+                                         boolean versionSort,
+                                         boolean randomSort) {
+        var sb = new StringBuilder();
+        if (generalNumericSort) {
+            sb.append("g");
+        }
+        if (dictionaryOrder) {
+            sb.append("d");
+        }
+        if (monthSort) {
+            sb.append("M");
+        }
+        if (numericSort) {
+            sb.append("n");
+        }
+        if (versionSort) {
+            sb.append("V");
+        }
+        if (randomSort) {
+            sb.append("R");
+        }
+
+        if (sb.length() > 1) {
+            System.err.printf("sort: options '-%s' are incompatible%n", sb);
+            System.exit(2);
+        }
     }
 
     private Comparator<Pair<String, Object>> getPairComparator() {
