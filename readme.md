@@ -1,3 +1,12 @@
+# Build from source 
+
+`mvn clean package` to build the "fat" jar
+
+`java -jar target/commands-1-jar-with-dependencies.jar <command-name> args...`
+
+`<command-name>` sort/cut
+
+`args...` arguments related to that specific command, explained below.
 
 # Cut
  a command to extract data from the file / stdin.
